@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Laundry Manager Pro V3</title>
+
+<style>
+body{
+font-family:Arial;
+background:#eef2f7;
+padding:15px;
+}
+
+h2{
+text-align:center;
+}
+
+input,select,button{
+padding:8px;
+margin:5px;
+width:90%;
+}
+
+button{
+background:#1976D2;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+.deleteBtn{
+background:red;
+}
+
+.card{
+background:white;
+padding:10px;
+margin:10px 0;
+box-shadow:0 0 5px rgba(0,0,0,0.1);
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:10px;
+}
+
+td,th{
+border:1px solid #ddd;
+padding:8px;
+text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🧺 Laundry Manager Pro V3</h2>
+
+<div class="card">
+
+<h3>Add Customer</h3>
+
+<input id="name" placeholder="Customer Name">
+<input id="phone" placeholder="Phone">
+
+<select id="premium">
+<option value="0">Normal</option>
+<option value="30">Premium ₹450 (30 Clothes)</option>
+<option value="45">Premium ₹650 (45 Clothes)</option>
+</select>
+
+<button onclick="addCustomer()">Add Customer</button>
+
+</div>
+
+<div class="card">
+
+<h3>Add Laundry Entry</h3>
+
+<input id="cid" placeholder="Customer ID">
+<input id="clothes" placeholder="Number of Clothes">
+
+<button onclick="addLaundry()">Add Entry</button>
+
+</div>
+
+<div class="card">
+
+<h3>🔎 Search Customer</h3>
+
+<input id="search" placeholder="Search by name" onkeyup="searchCustomer()">
+
+</div>
+
+<div class="card">
+
+<h3>📊 Business Summary</h3>
+<p id="summary"></p>
+
+</div>
+
+<div class="card">
+
+<h3>👥 Customers</h3>
+
+<table id="customerTable">
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Phone</th>
+<th>Plan</th>
+<th>Remaining</th>
+<th>Delete</th>
+</tr>
+</table>
+
+</div>
+
+<div class="card">
+
+<h3>📅 Today’s Laundry</h3>
+
+<table id="todayTable">
+<tr>
+<th>Name</th>
+<th>Clothes</th>
+<th>Date</th>
+</tr>
+</table>
+
+</div>
+
+<div class="card">
+
+<h3>📋 Full Laundry History</h3>
+
+<button onclick="exportExcel()">📥 Export to Excel</button>
+
+<table id="historyTable">
+<tr>
+<th>Name</th>
+<th>Clothes</th>
+<th>Date</th>
+</tr>
+</table>
+
+</div>
+
+<script>
+
+let customers = JSON.parse(localStorage.getItem("customers")) || [];
+let laundry = JSON.parse(localStorage.getItem("laundry")) || [];
+
+function save(){
+localStorage.setItem("customers",JSON.stringify(customers));
+localStorage.setItem("laundry",JSON.stringify(laundry));
+}
+
+function addCustomer(){
+
+let name=document.getElementById("name").value;
+let phone=document.getElementById("phone").value;
+let premium=parseInt(document.getElementById("premium").value);
+
+customers.push({
+id:customers.length+1,
+name:name,
+phone:phone,
+plan:premium,
+remaining:premium
+});
+
+save();
+showCustomers();
+updateSummary();
+
+}
+
+function deleteCustomer(id){
+
+customers = customers.filter(c=>c.id!=id);
+
+save();
+showCustomers();
+updateSummary();
+
+}
+
+function addLaundry(){
+
+let id=parseInt(document.getElementById("cid").value);
+let clothes=parseInt(document.getElementById("clothes").value);
+
+let customer=customers.find(c=>c.id==id);
+
+if(!customer){
+alert("Customer not found");
+return;
+}
+
+let today=new Date().toLocaleDateString();
+
+if(customer.plan>0){
+
+if(customer.remaining<clothes){
+alert("Premium Finished");
+return;
+}
+
+customer.remaining -= clothes;
+
+}
+
+laundry.push({
+name:customer.name,
+clothes:clothes,
+date:today
+});
+
+save();
+
+showCustomers();
+showToday();
+showHistory();
+updateSummary();
+
+}
+
+function showCustomers(){
+
+let table=document.getElementById("customerTable");
+
+table.innerHTML="<tr><th>ID</th><th>Name</th><th>Phone</th><th>Plan</th><th>Remaining</th><th>Delete</th></tr>";
+
+customers.forEach(c=>{
+
+let row=table.insertRow();
+
+let planText="Normal";
+
+if(c.plan==30) planText="₹450 (30)";
+if(c.plan==45) planText="₹650 (45)";
+
+row.insertCell(0).innerText=c.id;
+row.insertCell(1).innerText=c.name;
+row.insertCell(2).innerText=c.phone;
+row.insertCell(3).innerText=planText;
+row.insertCell(4).innerText=c.remaining;
+
+let delBtn=document.createElement("button");
+delBtn.innerText="Delete";
+delBtn.className="deleteBtn";
+delBtn.onclick=function(){ deleteCustomer(c.id); };
+
+row.insertCell(5).appendChild(delBtn);
+
+});
+
+}
+
+function showToday(){
+
+let table=document.getElementById("todayTable");
+
+table.innerHTML="<tr><th>Name</th><th>Clothes</th><th>Date</th></tr>";
+
+let today=new Date().toLocaleDateString();
+
+laundry.forEach(l=>{
+
+if(l.date==today){
+
+let row=table.insertRow();
+
+row.insertCell(0).innerText=l.name;
+row.insertCell(1).innerText=l.clothes;
+row.insertCell(2).innerText=l.date;
+
+}
+
+});
+
+}
+
+function showHistory(){
+
+let table=document.getElementById("historyTable");
+
+table.innerHTML="<tr><th>Name</th><th>Clothes</th><th>Date</th></tr>";
+
+laundry.forEach(l=>{
+
+let row=table.insertRow();
+
+row.insertCell(0).innerText=l.name;
+row.insertCell(1).innerText=l.clothes;
+row.insertCell(2).innerText=l.date;
+
+});
+
+}
+
+function searchCustomer(){
+
+let text=document.getElementById("search").value.toLowerCase();
+
+let table=document.getElementById("customerTable");
+
+table.innerHTML="<tr><th>ID</th><th>Name</th><th>Phone</th><th>Plan</th><th>Remaining</th><th>Delete</th></tr>";
+
+customers.forEach(c=>{
+
+if(c.name.toLowerCase().includes(text)){
+
+let row=table.insertRow();
+
+let planText="Normal";
+
+if(c.plan==30) planText="₹450 (30)";
+if(c.plan==45) planText="₹650 (45)";
+
+row.insertCell(0).innerText=c.id;
+row.insertCell(1).innerText=c.name;
+row.insertCell(2).innerText=c.phone;
+row.insertCell(3).innerText=planText;
+row.insertCell(4).innerText=c.remaining;
+
+let delBtn=document.createElement("button");
+delBtn.innerText="Delete";
+delBtn.className="deleteBtn";
+delBtn.onclick=function(){ deleteCustomer(c.id); };
+
+row.insertCell(5).appendChild(delBtn);
+
+}
+
+});
+
+}
+
+function updateSummary(){
+
+let totalCustomers=customers.length;
+
+let premiumCount=customers.filter(c=>c.plan>0).length;
+
+let today=new Date().toLocaleDateString();
+
+let todayClothes=0;
+
+laundry.forEach(l=>{
+if(l.date==today){
+todayClothes += l.clothes;
+}
+});
+
+document.getElementById("summary").innerText =
+"Total Customers: "+totalCustomers+
+" | Premium Members: "+premiumCount+
+" | Clothes Today: "+todayClothes;
+
+}
+
+function exportExcel(){
+
+let csv="Customer,Clothes,Date\n";
+
+laundry.forEach(l=>{
+csv += l.name+","+l.clothes+","+l.date+"\n";
+});
+
+let blob=new Blob([csv],{type:"text/csv"});
+
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="laundry_records.csv";
+a.click();
+
+}
+
+showCustomers();
+showToday();
+showHistory();
+updateSummary();
+
+</script>
+
+</body>
+</html><!DOCTYPE html>
+
+<html>
+<head>
+  <meta http-equiv="CONTENT-TYPE" content="text/html; charset=UTF-8">
+  <title>Hello, World!</title>
+</head>
+<body>
+  <h1>
+    Hello, World!
+  </h1>
+</body>
+</html>
